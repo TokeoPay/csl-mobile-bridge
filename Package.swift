@@ -19,7 +19,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "react_native_haskell_shelley",
-            path: "CSLKit/build/react_native_haskell_shelley.artifactbundle"
+            url: "https://github.com/TokeoPay/csl-mobile-bridge/raw/refs/heads/main/CSLKit/build/react_native_haskell_shelley.artifactbundle.zip",
+            checksum: "7ffd85d845870ab185ec5b6ee4bb799ea5574c49742f6fed671d67a08ff811f4"
         ),
         .target(
             name: "CSLKitObjC",

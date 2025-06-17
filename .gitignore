@@ -49,3 +49,5 @@ index.js.flow
 *.pyc
 __pycache__
 .vscode
+.build
+.swiftpm
