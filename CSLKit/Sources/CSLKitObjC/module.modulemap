@@ -1,0 +1,5 @@
+module CSLKitObjC {
+    header "NSString+RPtr.h"
+    header "NSData+DataPtr.h"
+    export *
+}

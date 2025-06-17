@@ -1,0 +1,367 @@
+#!/usr/bin/env python3
+
+import re
+import sys
+
+import tree_sitter_rust as tsrust
+from tree_sitter import Language, Parser, Query, QueryCursor
+
+# Create language and parser
+rust_language = Language(tsrust.language())
+parser = Parser(rust_language)
+
+def find_functions(node):
+    for child in node.children:
+        if child.type == 'function_item':
+            yield child
+        else:
+            yield from find_functions(child)
+
+
+def map_result_type(c_type):
+    """Map C result type to Swift type"""
+    mapping = {
+        'RPtr *': 'OpaqueRustPointer<T>',
+        'CharPtr *': 'String',
+        'DataPtr *': 'Data',
+        'bool *': 'Bool',
+        'int64_t *': 'Int64',
+        'int32_t *': 'Int32'
+    }
+    return mapping.get(c_type, 'Unknown')
+
+
+
+def c_name_to_swift_name(c_name):
+    """Convert csl_bridge_address_from_bech32 -> addressFromBech32"""
+    parts = c_name.replace('csl_bridge_', '').split('_')
+    return parts[0] + ''.join(word.capitalize() for word in parts[1:])
+
+
+def get_function_parameters(function_node):
+    parameters = []
+    params_node = function_node.child_by_field_name('parameters')
+    
+    if params_node:
+        for child in params_node.children:
+            if child.type == 'parameter':
+                pattern = child.child_by_field_name('pattern')
+                type_node = child.child_by_field_name('type')
+                
+                name = pattern.text.decode() if pattern else None
+                type_name = type_node.text.decode() if type_node else None
+                
+                parameters.append({'name': name, 'type': type_name})
+    
+    return parameters
+
+def find_typed_ref_calls(function_node, rptr_param_names):
+    typed_ref_calls = []
+    
+    # Start with the simplest possible query
+    query = Query(rust_language, """
+    (call_expression) @call
+    """)
+    
+    body = function_node.child_by_field_name('body')
+    if body:
+        captures = QueryCursor(query).captures(body)
+        print(f"Captures: {captures}")
+        
+        # captures is a dict with capture_name -> [nodes]
+        if 'call' in captures:
+            for node in captures['call']:
+                # Manually check if this is a typed_ref call
+                call_text = node.text.decode()
+                print(f"Call expression: {call_text}")
+                
+                if 'typed_ref' in call_text:
+                    print(f"Found typed_ref call: {call_text}")
+                    
+                    # Now manually extract the parts we need
+                    # Look for the pattern: variable.typed_ref::<Type>()
+                    if '.typed_ref::<' in call_text:
+                        # Extract variable name (before .typed_ref)
+                        var_part = call_text.split('.typed_ref::')[0].strip()
+                        var_name = var_part.split()[-1]  # Get last word
+                        
+                        # Extract type name (between < and >)
+                        type_part = call_text.split('typed_ref::<')[1].split('>')[0]
+                        
+                        if var_name in rptr_param_names:
+                            typed_ref_calls.append({
+                                'variable': var_name,
+                                'type': type_part,
+                                'node': node
+                            })
+                            print(f"Added: {var_name} -> {type_part}")
+    
+    return typed_ref_calls
+
+
+def analyze_function_return_pattern(function_node):
+    """
+    Analyze if function uses handle_exception_result pattern
+    """
+    body = function_node.child_by_field_name('body')
+    if not body:
+        return None
+    
+    # Look for handle_exception_result calls
+    query = Query(rust_language, """
+    (call_expression
+      function: (identifier) @func_name
+      (#eq? @func_name "handle_exception_result")) @call
+    """)
+    
+    captures = QueryCursor(query).captures(body)
+    if 'call' in captures:
+        call_node = captures['call'][0]  # Get first match
+        print(f"Found handle_exception_result call: {call_node.text.decode()}")
+        return analyze_closure_return_type(call_node)
+    
+    return None
+
+def analyze_closure_return_type(handle_exception_call):
+    """
+    Extract the Ok type from: Ok::<CharPtr, String>(result.into_cstr())
+    """
+    call_text = handle_exception_call.text.decode()
+    
+    # Look for Ok::<Type, Error> pattern
+    if 'Ok::<' in call_text:
+        # Extract the type between Ok::< and ,
+        ok_part = call_text.split('Ok::<')[1]
+        ok_type = ok_part.split(',')[0].strip()
+        print(f"Found Ok type: {ok_type}")
+        return ok_type
+    
+    return None
+
+def find_result_variable_info(function_node):
+    """
+    Find result variable and determine if we need to look deeper
+    """
+    # First check the overall return pattern
+    return_type = analyze_function_return_pattern(function_node)
+    print(f"Function return type: {return_type}")
+    
+    # Now find the result variable
+    query = Query(rust_language, """
+    (let_declaration) @declaration
+    """)
+    
+    body = function_node.child_by_field_name('body')
+    if body:
+        captures = QueryCursor(query).captures(body)
+        
+        if 'declaration' in captures:
+            for decl_node in captures['declaration']:
+                pattern = decl_node.child_by_field_name('pattern')
+                if pattern and pattern.text.decode() == "result":
+                    value = decl_node.child_by_field_name('value')
+                    if value:
+                        value_text = value.text.decode()
+                        print(f"Result assignment: {value_text}")
+                        
+                        # Determine the result type
+                        result_type = parse_method_chain_type(value_text)
+                        print(f"Result variable type: {result_type}")
+                        
+                        return {
+                            'function_return_type': return_type,
+                            'result_variable_type': result_type,
+                            'needs_rptr_analysis': result_type == 'RPtr' or 'RPtr' in str(result_type)
+                        }
+    
+    return {
+        'function_return_type': return_type,
+        'result_variable_type': None,
+        'needs_rptr_analysis': False
+    }
+
+def map_rust_type_to_swift(rust_type):
+    """
+    Map Rust types to Swift types
+    """
+    type_mapping = {
+        'CharPtr': 'String',
+        'RPtr': 'RPtr',  # Keep as RPtr for further analysis
+        'String': 'String',
+        'u32': 'UInt32',
+        'u64': 'UInt64',
+        'i32': 'Int32',
+        'i64': 'Int64',
+        'bool': 'Bool',
+        # Add more mappings as needed
+    }
+    
+    return type_mapping.get(rust_type, rust_type)
+
+def find_result_variable_type_manual(function_node):
+    """
+    Complete analysis of function return types
+    """
+    info = find_result_variable_info(function_node)
+    
+    if info['needs_rptr_analysis']:
+        print("Result is RPtr - need to analyze typed_ref calls")
+        # Use your existing typed_ref analysis here
+        # typed_refs = find_typed_ref_calls(function_node, ['result'])
+        # return analyze_rptr_type(typed_refs)
+    else:
+        final_type = info['function_return_type'] or info['result_variable_type']
+        swift_type = map_rust_type_to_swift(final_type)
+        print(f"Final Swift type: {swift_type}")
+        return swift_type
+
+# def find_result_variable_type_manual(function_node):
+#     query = Query(rust_language, """
+#     (let_declaration) @declaration
+#     """)
+    
+#     body = function_node.child_by_field_name('body')
+#     print(f"Body: {body}")
+#     if body:
+#         captures = QueryCursor(query).captures(body)
+#         print(f"All let declarations: {captures}")
+        
+#         if 'declaration' in captures:
+#             for decl_node in captures['declaration']:
+#                 pattern = decl_node.child_by_field_name('pattern')
+#                 if pattern:
+#                     var_name = pattern.text.decode()
+#                     print(f"Variable name: {var_name}")
+                    
+#                     if var_name == "result":
+#                         print("Found result variable!")
+                        
+#                         # Get the value (right-hand side of assignment)
+#                         value = decl_node.child_by_field_name('value')
+#                         if value:
+#                             value_text = value.text.decode()
+#                             print(f"Value: {value_text}")
+#                             print(f"Value type: {value.type}")
+                            
+#                             # Parse the type from the assignment
+#                             inferred_type = parse_method_chain_type(value_text)
+#                             print(f"Inferred type: {inferred_type}")
+#                             return inferred_type
+                        
+#                         # Check if there's an explicit type annotation
+#                         type_annotation = decl_node.child_by_field_name('type')
+#                         if type_annotation:
+#                             explicit_type = type_annotation.text.decode()
+#                             print(f"Explicit type: {explicit_type}")
+#                             return explicit_type
+#     return None
+
+
+def debug_let_declarations(function_node):
+    # Find all let declarations first
+    query = Query(rust_language, """
+    (let_declaration) @declaration
+    """)
+    
+    body = function_node.child_by_field_name('body')
+    if body:
+        captures = QueryCursor(query).captures(body)
+        print(f"All let declarations: {captures}")
+        
+        if 'declaration' in captures:
+            for decl_node in captures['declaration']:
+                print(f"Declaration: {decl_node.text.decode()}")
+                print(f"Declaration sexp: {decl_node.text}")
+                print("---")
+
+def parse_method_chain_type(value_text):
+    """
+    Parse: Address::from_bech32(bech_str).into_result()?
+    """
+    print(f"Parsing: {value_text}")
+    
+    if '::' in value_text:
+        # Get the base type (Address)
+        base_type = value_text.split('::')[0].strip()
+        print(f"Base type: {base_type}")
+        
+        if '.into_result()?' in value_text:
+            # The ? operator unwraps the Result, so result is of type Address
+            return base_type
+        elif '.into_result()' in value_text:
+            # Without ?, it would be Result<Address, Error>
+            return f"Result<{base_type}, Error>"
+    
+    return None
+
+def analyze_function(function_node):
+    # Get parameters
+    params = get_function_parameters(function_node)
+    print("Parameters:")
+    for param in params:
+        print(f"  {param['name']}: {param['type']}")
+    
+    # Find RPtr parameters (excluding "result")
+    rptr_params = [p['name'] for p in params 
+                   if p['type'] == 'RPtr' and p['name'] != 'result']
+    
+    # Find typed_ref calls
+    if rptr_params:
+        typed_refs = find_typed_ref_calls(function_node, rptr_params)
+        print("\ntyped_ref calls:")
+        for ref in typed_refs:
+            print(f"  {ref['variable']}.typed_ref::<{ref['type']}>()")
+    
+    result_type = find_result_variable_type_manual(function_node)
+
+    # debug_let_declarations(function_node)
+    
+
+
+    if result_type:
+        print(f"\nResult variable type: {result_type}")
+
+
+def parse__rust_simple(rust_file):
+    with open(rust_file, 'rb') as f:
+        code = f.read()
+
+    tree = parser.parse(code)
+    root_node = tree.root_node
+
+    for func in find_functions(root_node):
+        name_node = func.child_by_field_name('name')
+        if name_node is not None:
+            func_name = code[name_node.start_byte:name_node.end_byte].decode()
+            if (func_name == 'csl_bridge_address_to_bech32'):
+                print('Function name:', func_name)
+                analyze_function(func)
+                break   
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python simple_parser.py <rust_file>")
+        sys.exit(1)
+    
+    rust_file = sys.argv[1]
+    functions = parse__rust_simple(rust_file)
+    
+        
+    # for func in functions:
+    #     swift_return = func['swift_return']
+    #     if 'OpaqueRustPointer<T>' in swift_return:
+    #         # Try to infer the actual type from function name
+    #         swift_return = infer_return_type_from_name(func['swift_name'])
+        
+    #     params_str = ', '.join(f'"{p}"' for p in func['swift_params'])
+    #     print(f'@RustBinding("{func["c_name"]}") private static func _{func["swift_name"]}({params_str}) throws -> OpaqueRustPointer<Address> {{fatalError()}}')
+
+        
+        # print(f'    ("{func["swift_name"]}", "{swift_return}", [{params_str}], "{func["c_name"]}", "{func["pattern"]}"),')
+    
+    # print("]")
+    
+    # print(f"\n// Found {len(functions)} functions", file=sys.stderr)
+
+if __name__ == '__main__':
+    main()

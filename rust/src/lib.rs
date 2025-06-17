@@ -16,9 +16,9 @@ mod android;
 #[cfg(target_os = "android")]
 pub use self::android::*;
 
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "ios", target_os = "macos"))]
 mod ios;
 pub mod arrays;
 
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "ios", target_os = "macos"))]
 pub use self::ios::*;

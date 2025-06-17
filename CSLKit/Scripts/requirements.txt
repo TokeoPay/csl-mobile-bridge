@@ -1,0 +1,2 @@
+tree-sitter @ git+https://github.com/tree-sitter/py-tree-sitter.git@24fcfe0ed8cdd8cc49756a52cfc135d42e083378
+tree-sitter-rust==0.24.0
