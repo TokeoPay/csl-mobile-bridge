@@ -265,7 +265,12 @@ public class CSLKit {
         }
     }
     
-//    
+    @RustBinding("csl_bridge_base_address_new") private static func _baseAddressNew(network_long p1: Int64, payment_rptr p2: OpaqueRustPointer<CSL_Credential>, stake_rptr p3: OpaqueRustPointer<CSL_Credential>) throws -> OpaqueRustPointer<CSL_None> {fatalError()}
+    @RustBinding("csl_bridge_base_address_payment_cred") private static func _baseAddressPaymentCred(self_rptr p1: OpaqueRustPointer<CSL_BaseAddress>) throws -> OpaqueRustPointer<CSL_PaymentCred> {fatalError()}
+    @RustBinding("csl_bridge_base_address_to_address") private static func _baseAddressToAddress(self_rptr p1: OpaqueRustPointer<CSL_BaseAddress>) throws -> OpaqueRustPointer<CSL_Address> {fatalError()}
+
+    
+//
 //    /*@RustBinding("csl_bridge_fixed_transaction_raw_body") private static func _fixedTransactionRawBody(self_rptr p1: OpaqueRustPointer<CSL_FixedTransaction>) throws */-> DataPtr {fatalError()}
     @RustBinding("csl_bridge_fixed_transaction_body_tx_hash") private static func _fixedTransactionBodyTxHash(self_rptr p1: OpaqueRustPointer<CSL_FixedTransactionBody>) throws -> OpaqueRustPointer<CSL_TransactionHash> {fatalError()}
     @RustBinding("csl_bridge_fixed_transaction_body_from_hex") private static func _fixedTransactionBodyFromHex(hex_str_str p1: String) throws -> OpaqueRustPointer<CSL_FixedTransactionBody> {fatalError()}

@@ -9,6 +9,7 @@ let package = Package(
     platforms: [.macOS(.v10_15), .iOS(.v13)],
     products: [
         .library(name: "CSLKit", targets: ["CSLKit"]),
+        .library(name: "CSLKitMacrosPlugin", targets: ["CSLKitMacrosPlugin"]),
     ],
     dependencies: [
         .package(
