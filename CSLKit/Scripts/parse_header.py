@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 
-import re
 import sys
-
 import tree_sitter_rust as tsrust
+
 from tree_sitter import Language, Parser, Query, QueryCursor
 
 # Create language and parser
@@ -38,6 +37,29 @@ def c_name_to_swift_name(c_name):
     return parts[0] + ''.join(word.capitalize() for word in parts[1:])
 
 
+def get_swift_param_definition(param, idx):
+    """ 
+    This depends on the Type of the parameter
+        - String -> This will need to be case to a CharPtr
+        - RPtr -> We will need to extract out the Pointer: so param['name'] + ".cPointer"
+        - Data -> Will need to be converted to a DataPtr
+        - bool -> Bool
+        - int64_t -> Int64
+        - int32_t -> Int32
+        - etc.
+    
+    """
+    if param['type'] == 'String':
+        return f"var {param['name']}: String = {param['name']}"
+    elif param['type'] == 'RPtr':
+        return f"var {param['name']}: OpaqueRustPointer<CSL_{param['type']}> = OpaqueRustPointer<CSL_{param['type']}>(_0: nil)"
+    elif param['type'] == 'Data':
+        return f"var {param['name']}: Data = Data(_0: nil)"
+    elif param['type'] == 'bool':
+        return f"var {param['name']}: Bool = false"
+
+    return f"var {param['name']}: {param['swiftType']} = {param['swiftType']}(_0: nil)"
+
 def get_function_parameters(function_node):
     parameters = []
     params_node = function_node.child_by_field_name('parameters')
@@ -50,8 +72,13 @@ def get_function_parameters(function_node):
                 
                 name = pattern.text.decode() if pattern else None
                 type_name = type_node.text.decode() if type_node else None
-                
-                parameters.append({'name': name, 'type': type_name})
+                swift_type = map_rust_type_to_swift(type_name)
+                parameters.append({
+                    'name': name, 
+                    'type': type_name, 
+                    'swiftType': swift_type,
+                    # 'swiftDefine': get_swift_param_definition(name, swift_type)
+                })
     
     return parameters
 
@@ -211,9 +238,9 @@ def find_result_variable_type_manual(function_node):
         # print("Result is RPtr - need to analyze typed_ref calls")
         # Use your existing typed_ref analysis here
         elif info['result_variable_type'] == 'Option<RPtr>':
-            return f"OpaqueRustPointer<CSL_{info['result_variable_type']}>?"
+            return f"OpaqueRustPointer<Types.CSL_{info['result_variable_type']}>?"
         else:
-            return f"OpaqueRustPointer<CSL_{info['result_variable_type']}>"
+            return f"OpaqueRustPointer<Types.CSL_{info['result_variable_type']}>"
         # return analyze_rptr_type(typed_refs)
     else:
         final_type = info['function_return_type'] or info['result_variable_type']
@@ -1169,11 +1196,11 @@ def parse_method_chain_type(value):
 
     return None
 
-def analyze_function(function_node, func_name):
+
+def analyze_function(function_node, func_name, count):
     # Get parameters
     params = get_function_parameters(function_node)
-    
-    
+        
     # Find RPtr parameters (excluding "result")
     rptr_params = [p['name'] for p in params 
                    if p['type'] == 'RPtr' and p['name'] != 'result']
@@ -1190,23 +1217,134 @@ def analyze_function(function_node, func_name):
 
     result_type = find_result_variable_type_manual(function_node)
 
-    paramLine = []
+    if params == []:
+        print(f"No params for {func_name}", file=sys.stderr)
+        return count
+    
+    if result_type == None:
+        print(f"No result type for {func_name}", file=sys.stderr)
+        return count
+
+    paramLine = [] # Used to hold the Swift Input Parameters
+    params_def = [] # Used to hold parameter casting
+    params_val = [] # Used to pass the "casted" parameters to the Rust Function
+ 
+    """
+    I need to build the parameters for a function call.
+    It will need to handle the following cases:
+        - String -> This will need to be case to a CharPtr
+        - RPtr -> We will need to extract out the Pointer: so param['name'] + ".cPointer"
+        - Data -> This will need to be converted to two parameters:
+            - DataPtr
+            - DataLength
+        - bool -> Bool
+        - int64_t -> Int64
+        - int32_t -> Int32
+        - etc.
+
+    The function return 2 strings, the first one being the parameter definitions and the second one being the parameter values.
+    Where the parameter definitions is how Swift will define the parameters and the parameter values is how Swift will call the function.
+    """
+    skipNext = False
+
     for idx, param in enumerate(params):
-        if (param['name'] == 'result'):
+        if (param['name'] == 'result'): # We will work oout the result parameter later
             continue
-        if (param['name'] == 'error'):
+        if (param['name'] == 'error'): # Error is a fixed type, so we will not need to define it
             continue
 
-        if param['name'] in typed_refs_map:
-            paramLine.append(f"{param['name']} p{idx + 1}: OpaqueRustPointer<CSL_{typed_refs_map[param['name']]['type']}>")
+        if skipNext:
+            skipNext = False
+            continue
+
+        debug(f"Param: {param['name']}: {param['type']}: {param['swiftType']}")
+
+        paramId = f"p{idx + 1}"
+        if param['name'] in typed_refs_map: # This is a typed_ref call, so we will need to extract out the Pointer
+            paramLine.append(f"{param['name']} {paramId}: OpaqueRustPointer<Types.CSL_{typed_refs_map[param['name']]['type']}>")
+            params_def.append(f"var c_{paramId} = {paramId}.cPointer")
+            params_val.append(f"c_{paramId}")
+        
+        elif param['swiftType'] == 'Data':
+            paramLine.append(f"{param['name']} {paramId}: Data")
+            params_def.append(f"var c_{paramId}_ptr = {paramId}.withUnsafeBytes {{ $0.bindMemory(to: UInt8.self).baseAddress }}!")
+            params_def.append(f"var c_{paramId}_len = UInt({paramId}.count)")
+            params_val.append(f"&c_{paramId}_ptr, c_{paramId}_len")
+            skipNext = True
+
+        elif param['swiftType'] == 'CharPtr':
+            paramLine.append(f"{param['name']} {paramId}: String")
+            params_def.append(f"var c_{paramId} = ({paramId} as NSString).utf8String")
+            params_val.append(f"c_{paramId}")
+
         else:
-            paramLine.append(f"{param['name']} p{idx + 1}: {map_rust_type_to_swift(param['type'])}")
+            paramLine.append(f"{param['name']} {paramId}: {param['swiftType']}")
+            params_val.append(f"{paramId}")
 
-    paramLine = ", ".join(paramLine)
+    paramLine = ", ".join(paramLine) if paramLine else ""
+
+    params_def = "\n            ".join(params_def) if params_def else ""
+
+    params_val.append("&result")
+    params_val.append("&error")
+
+    params_val = ", ".join(params_val) if params_val else ""
+
+
+# bool *result
+# CharPtr *result
+# DataPtr *result
+# int32_t *result
+# int64_t *result
+# RPtr *result
+# RPtr vrf_result_rptr
+#
+
+
+
+
+    if "OpaqueRustPointer" in result_type:
+        result_def = " = RPtr(_0: nil)"
+        result_return = "OpaqueRustPointer(cPointer: result)"
+    elif result_type == "String":
+        result_def = ": CharPtr? = nil"
+        result_return = "String(cString: result!)"
+    elif result_type == "DataPtr":
+        result_type = "Data"
+        result_def = " = try DataPtr.init(fromData: Data())"
+        result_return = "Data(dataPtr: result)"
+    else:
+        result_def = f" = {result_type}()"
+        result_return = "result"
 
     if result_type != None:
-        print(f"@RustBinding(\"{func_name}\") private static func _{c_name_to_swift_name(func_name)}({paramLine}) throws -> {result_type} {{fatalError()}}")
+        print(f"""
+        // Swift Wrapper call to {func_name}
+        public static func {c_name_to_swift_name(func_name)}({paramLine}) throws -> {result_type} {{
+            {params_def}
+            var result {result_def}
+            var error: CharPtr? = nil
+            let success = {func_name}({params_val})
+            if success {{
+                return {result_return}
+            }} else {{
+                throw createError(from: error)
+            }}
+        }}
+        """)
 
+        count += 1
+
+        if count % 100 == 0:
+            print(f"///// FILE BREAK /////")
+
+    return count
+
+DEBUG = False
+
+def debug(msg):
+    if DEBUG:
+        print(msg)
 
 def parse__rust_simple(rust_file):
     with open(rust_file, 'rb') as f:
@@ -1215,15 +1353,16 @@ def parse__rust_simple(rust_file):
     tree = parser.parse(code)
     root_node = tree.root_node
 
+    count = 0
     for func in find_functions(root_node):
         name_node = func.child_by_field_name('name')
         if name_node is not None:
             func_name = code[name_node.start_byte:name_node.end_byte].decode()
             # Get only functions that start with csl_bridge_
-            # if (func_name == 'csl_bridge_address_payment_cred'):
+            # if (func_name == 'csl_bridge_address_from_bytes'):
             if (func_name.startswith('csl_bridge_')):
                 # print('Function name:', func_name)
-                analyze_function(func, func_name)  
+                count = analyze_function(func, func_name, count)  
 
 def main():
     if len(sys.argv) != 2:
@@ -1231,7 +1370,7 @@ def main():
         sys.exit(1)
     
     rust_file = sys.argv[1]
-    functions = parse__rust_simple(rust_file)
+    parse__rust_simple(rust_file)
     
         
     # for func in functions:

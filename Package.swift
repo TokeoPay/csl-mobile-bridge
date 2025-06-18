@@ -9,13 +9,6 @@ let package = Package(
     platforms: [.macOS(.v10_15), .iOS(.v13)],
     products: [
         .library(name: "CSLKit", targets: ["CSLKit"]),
-        .library(name: "CSLKitMacrosPlugin", targets: ["CSLKitMacrosPlugin"]),
-    ],
-    dependencies: [
-        .package(
-            url: "https://github.com/apple/swift-syntax.git",
-            from: "509.0.0"
-        ),
     ],
     targets: [
         .binaryTarget(
@@ -33,22 +26,13 @@ let package = Package(
             name: "CSLKit",
             dependencies: [
                 "CSLKitObjC",
-                "CSLKitMacrosPlugin",
                 "react_native_haskell_shelley",
             ],
             path: "CSLKit/Sources/CSLKit"
         ),
-        .macro(
-            name: "CSLKitMacrosPlugin",
-            dependencies: [
-                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ],
-            path: "CSLKit/Sources/CSLKitMacrosPlugin"
-        ),
         .testTarget(
             name: "CSLKitTests", 
-            dependencies: ["CSLKit", "CSLKitMacrosPlugin"],
+            dependencies: ["CSLKit"],
             path: "CSLKit/Tests/CSLKitTests"
         ),
     ]

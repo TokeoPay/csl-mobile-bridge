@@ -2,21 +2,20 @@
 // The swift-tools-version declares the minimum version of Swift required to build this package.
 
 import PackageDescription
-import CompilerPluginSupport // 1. Add this import!
+import CompilerPluginSupport
 
 let package = Package(
     name: "CSLKit",
     platforms: [.macOS(.v10_15), .iOS(.v13)],
     products: [
         .library(name: "CSLKit", targets: ["CSLKit"]),
-        .library(name: "CSLKitMacrosPlugin", targets: ["CSLKitMacrosPlugin"]),
     ],
-    dependencies: [
-        .package(
-            url: "https://github.com/apple/swift-syntax.git",
-            from: "509.0.0"
-        ),
-    ],
+//    dependencies: [
+//        .package(
+//            url: "https://github.com/apple/swift-syntax.git",
+//            from: "509.0.0"
+//        ),
+//    ],
     targets: [
         // Your existing binary and Objective-C targets
         .binaryTarget(
@@ -35,20 +34,19 @@ let package = Package(
             name: "CSLKit",
             dependencies: [
                 "CSLKitObjC",
-                "CSLKitMacrosPlugin",
+//                "CSLKitMacrosPlugin",
                 "react_native_haskell_shelley",
             ]
         ),
                 
-        .macro(
-            name: "CSLKitMacrosPlugin",
-            dependencies: [
-                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
-                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
-            ]
-        ),
+//        .macro(
+//            name: "CSLKitMacrosPlugin",
+//            dependencies: [
+//                .product(name: "SwiftSyntaxMacros", package: "swift-syntax"),
+//                .product(name: "SwiftCompilerPlugin", package: "swift-syntax"),
+//            ]
+//        ),
     
-        .testTarget(name: "CSLKitTests", dependencies: ["CSLKit",
-                                                        "CSLKitMacrosPlugin",]),
+        .testTarget(name: "CSLKitTests", dependencies: ["CSLKit"]),
     ]
 )

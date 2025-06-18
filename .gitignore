@@ -51,3 +51,4 @@ __pycache__
 .vscode
 .build
 .swiftpm
+CSLKit/Scripts/errors
