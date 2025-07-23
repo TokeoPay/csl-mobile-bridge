@@ -465,7 +465,25 @@ extension CSLKit {
                 throw createError(from: error)
             }
         }
-        
+
+
+        //Swift Wrapper call to csl_bridge_public_key_hash
+        public static func publicKeyHash(self_rptr p1: OpaqueRustPointer<Types.CSL_PublicKey>) throws -> OpaqueRustPointer<Types.CSL_Ed25519KeyHash> {
+            let c_p1 = p1.cPointer
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_public_key_hash(c_p1, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+
+
+
+
 
         // Swift Wrapper call to csl_bridge_public_key_from_bech32
         public static func publicKeyFromBech32(bech32_str_str p1: String) throws -> OpaqueRustPointer<Types.CSL_PublicKey> {

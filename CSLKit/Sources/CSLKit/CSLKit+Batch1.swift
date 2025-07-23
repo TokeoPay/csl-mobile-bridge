@@ -97,6 +97,7 @@ extension CSLKit {
             if success {
                 return String(cString: result!)
             } else {
+                print("Error", error)
                 throw createError(from: error)
             }
         }
@@ -712,7 +713,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_assets_new
-        public static func assetsNew() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func assetsNew() throws -> OpaqueRustPointer<Types.CSL_Assets> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -733,6 +734,40 @@ extension CSLKit {
             let success = csl_bridge_assets_len(c_p1, &result, &error)
             if success {
                 return result
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+        //Swift wrapper call to csl_bridge_assets_get
+        public static func assetsGet(self_rptr p1: OpaqueRustPointer<Types.CSL_Assets>, asset_rptr p2: OpaqueRustPointer<Types.CSL_AssetName>) throws -> OpaqueRustPointer<Types.CSL_BigNum> {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_assets_get(c_p1, c_p2, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+
+
+
+
+
+        // Swift wrapper call to csl_bridge_assets_insert        
+        public static func assetsInsert(self_rptr p1: OpaqueRustPointer<Types.CSL_Assets>, asset_rptr p2: OpaqueRustPointer<Types.CSL_AssetName>, value_int p3: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_None> {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            let c_p3 = p3.cPointer
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_assets_insert(c_p1, c_p2, c_p3, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
             } else {
                 throw createError(from: error)
             }
@@ -980,7 +1015,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_base_address_new
-        public static func baseAddressNew(network_long p1: Int64, payment_rptr p2: OpaqueRustPointer<Types.CSL_Credential>, stake_rptr p3: OpaqueRustPointer<Types.CSL_Credential>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func baseAddressNew(network_long p1: Int64, payment_rptr p2: OpaqueRustPointer<Types.CSL_Credential>, stake_rptr p3: OpaqueRustPointer<Types.CSL_Credential>) throws -> OpaqueRustPointer<Types.CSL_BaseAddress> {
             let c_p2 = p2.cPointer
             let c_p3 = p3.cPointer
             var result  = RPtr(_0: nil)

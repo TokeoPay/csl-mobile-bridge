@@ -2,7 +2,8 @@
 
 import sys
 import tree_sitter_rust as tsrust
-
+import subprocess
+import os
 from tree_sitter import Language, Parser, Query, QueryCursor
 
 # Create language and parser
@@ -1222,8 +1223,9 @@ def analyze_function(function_node, func_name, count):
         return count
     
     if result_type == None:
-        print(f"No result type for {func_name}", file=sys.stderr)
-        return count
+        # print(f"No result type for {func_name}", file=sys.stderr)
+        # return count
+        result_type = "OpaqueRustPointer<Types.CSL_TxInputsBuilder>"
 
     paramLine = [] # Used to hold the Swift Input Parameters
     params_def = [] # Used to hold parameter casting
@@ -1247,8 +1249,11 @@ def analyze_function(function_node, func_name, count):
     """
     skipNext = False
 
+    hasResult = False
+
     for idx, param in enumerate(params):
         if (param['name'] == 'result'): # We will work oout the result parameter later
+            hasResult = True
             continue
         if (param['name'] == 'error'): # Error is a fixed type, so we will not need to define it
             continue
@@ -1285,7 +1290,9 @@ def analyze_function(function_node, func_name, count):
 
     params_def = "\n            ".join(params_def) if params_def else ""
 
-    params_val.append("&result")
+    if hasResult:
+        params_val.append("&result")
+        
     params_val.append("&error")
 
     params_val = ", ".join(params_val) if params_val else ""
@@ -1302,27 +1309,33 @@ def analyze_function(function_node, func_name, count):
 
 
 
+    if hasResult:
+        if "OpaqueRustPointer" in result_type:
+            result_def = " = RPtr(_0: nil)"
+            result_return = "OpaqueRustPointer(cPointer: result)"
+        elif result_type == "String":
+            result_def = ": CharPtr? = nil"
+            result_return = "String(cString: result!)"
+        elif result_type == "DataPtr":
+            result_type = "Data"
+            result_def = " = try DataPtr.init(fromData: Data())"
+            result_return = "Data(dataPtr: result)"
+        else:
+            result_def = f" = {result_type}()"
+            result_return = "result"
 
-    if "OpaqueRustPointer" in result_type:
-        result_def = " = RPtr(_0: nil)"
-        result_return = "OpaqueRustPointer(cPointer: result)"
-    elif result_type == "String":
-        result_def = ": CharPtr? = nil"
-        result_return = "String(cString: result!)"
-    elif result_type == "DataPtr":
-        result_type = "Data"
-        result_def = " = try DataPtr.init(fromData: Data())"
-        result_return = "Data(dataPtr: result)"
+        result_def = f"var result {result_def}"
     else:
-        result_def = f" = {result_type}()"
-        result_return = "result"
+        result_def = ""
+        result_return = "success"
+        result_type = "Bool"
 
     if result_type != None:
         print(f"""
         // Swift Wrapper call to {func_name}
         public static func {c_name_to_swift_name(func_name)}({paramLine}) throws -> {result_type} {{
             {params_def}
-            var result {result_def}
+            {result_def}
             var error: CharPtr? = nil
             let success = {func_name}({params_val})
             if success {{
@@ -1360,9 +1373,33 @@ def parse__rust_simple(rust_file):
             func_name = code[name_node.start_byte:name_node.end_byte].decode()
             # Get only functions that start with csl_bridge_
             # if (func_name == 'csl_bridge_address_from_bytes'):
-            if (func_name.startswith('csl_bridge_')):
-                # print('Function name:', func_name)
-                count = analyze_function(func, func_name, count)  
+            if (func_name.startswith('csl_bridge_tx_inputs_builder')):
+                if not function_already_exists(func_name):
+                    count = analyze_function(func, func_name, count)
+
+def function_already_exists(func_name):
+       
+    # Get the directory containing this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Go up to the project root and then into Sources
+    sources_dir = os.path.join(script_dir, '..', 'Sources')
+    
+    try:
+        # Use grep to search for the function name in Swift files
+        result = subprocess.run(
+            ['grep', '-r', func_name, sources_dir],
+            capture_output=True,
+            text=True,
+            check=False  # Don't raise exception if grep finds nothing
+        )
+        
+        # If grep found matches (exit code 0), the function already exists
+        return result.returncode == 0
+        
+    except Exception as e:
+        # If grep fails for any reason, assume function doesn't exist to be safe
+        debug(f"Error checking if function exists: {e}")
+        return False
 
 def main():
     if len(sys.argv) != 2:

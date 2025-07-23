@@ -117,7 +117,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_ex_unit_prices_new
-        public static func exUnitPricesNew(mem_price_rptr p1: OpaqueRustPointer<Types.CSL_UnitInterval>, step_price_rptr p2: OpaqueRustPointer<Types.CSL_UnitInterval>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func exUnitPricesNew(mem_price_rptr p1: OpaqueRustPointer<Types.CSL_UnitInterval>, step_price_rptr p2: OpaqueRustPointer<Types.CSL_UnitInterval>) throws -> OpaqueRustPointer<Types.CSL_ExUnitPrices> {
             let c_p1 = p1.cPointer
             let c_p2 = p2.cPointer
             var result  = RPtr(_0: nil)
@@ -231,7 +231,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_ex_units_new
-        public static func exUnitsNew(mem_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, steps_rptr p2: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func exUnitsNew(mem_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, steps_rptr p2: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_ExUnits> {
             let c_p1 = p1.cPointer
             let c_p2 = p2.cPointer
             var result  = RPtr(_0: nil)

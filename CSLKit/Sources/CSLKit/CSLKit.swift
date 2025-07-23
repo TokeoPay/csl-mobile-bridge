@@ -23,7 +23,11 @@ public class CSLKit {
     public class Types {
         // MARK: - Type Definitions
         public enum CSL_Address {}
+        public enum CSL_LanguageVersions {}
+        public enum TransactionUnspentOutputs {}
         public enum CSL_StakePoolKeyHash {}
+        public enum CSL_PlutusWitness {}
+        public enum CSL_TransactionBuilderConfigBuilder {}
         public enum CSL_Anchor {}
         public enum CSL_LinearFee {}
         public enum CSL_DataCost {}
@@ -55,6 +59,7 @@ public class CSLKit {
         public enum CSL_ConstrPlutusData {}
         public enum CSL_Costmdls {}
         public enum CSL_CostModel {}
+        public enum CSL_LanguageVersion {}
         public enum CSL_Credential {}
         public enum CSL_Credentials {}
         public enum CSL_DataHash {}
@@ -159,6 +164,7 @@ public class CSLKit {
         public enum CSL_ScriptRef {}
         public enum CSL_SingleHostAddr {}
         public enum CSL_SingleHostName {}
+        public enum CSL_Signature {}
         public enum CSL_ChangeConfig {}
         public enum CSL_OutputDatum {}
         public enum CSL_StakeAndVoteDelegation {}
@@ -246,5 +252,20 @@ public class CSLKit {
         }
         
     }
-    
+
+//    public static func rptrFree(rptr: OpaqueRustPointer) {
+//        rptr_free(rptr)
+//    }
+//    
+//    public static func charPtrFree(charPtr: CharPtr) {
+//        charptr_free(charPtr)
+//    }
+//
+//    public static func dataPtrFree(dataPtr: DataPtr) {
+//        dataptr_free(dataPtr)
+//    }
+//
+//    public static func dataFree(data: Data) {
+//        data_free(data)
+//    }
 }

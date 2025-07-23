@@ -244,7 +244,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_tx_inputs_builder_new
-        public static func txInputsBuilderNew() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func txInputsBuilderNew() throws -> OpaqueRustPointer<Types.CSL_TxInputsBuilder> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -484,7 +484,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_unit_interval_new
-        public static func unitIntervalNew(numerator_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, denominator_rptr p2: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func unitIntervalNew(numerator_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, denominator_rptr p2: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_UnitInterval> {
             let c_p1 = p1.cPointer
             let c_p2 = p2.cPointer
             var result  = RPtr(_0: nil)
@@ -1113,7 +1113,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_value_new
-        public static func valueNew(coin_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func valueNew(coin_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_Value> {
             let c_p1 = p1.cPointer
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -1127,7 +1127,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_value_new_from_assets
-        public static func valueNewFromAssets(multiasset_rptr p1: OpaqueRustPointer<Types.CSL_MultiAsset>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func valueNewFromAssets(multiasset_rptr p1: OpaqueRustPointer<Types.CSL_MultiAsset>) throws -> OpaqueRustPointer<Types.CSL_Value> {
             let c_p1 = p1.cPointer
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -1141,7 +1141,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_value_new_with_assets
-        public static func valueNewWithAssets(coin_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, multiasset_rptr p2: OpaqueRustPointer<Types.CSL_MultiAsset>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func valueNewWithAssets(coin_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, multiasset_rptr p2: OpaqueRustPointer<Types.CSL_MultiAsset>) throws -> OpaqueRustPointer<Types.CSL_Value> {
             let c_p1 = p1.cPointer
             let c_p2 = p2.cPointer
             var result  = RPtr(_0: nil)
@@ -1156,7 +1156,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_value_zero
-        public static func valueZero() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func valueZero() throws -> OpaqueRustPointer<Types.CSL_Value> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -1197,19 +1197,158 @@ extension CSLKit {
             }
         }
         
-
-        // Swift Wrapper call to csl_bridge_versioned_block_to_bytes
-        public static func versionedBlockToBytes(self_rptr p1: OpaqueRustPointer<Types.CSL_VersionedBlock>) throws -> Data {
+        // Swift Wrapper call to csl_bridge_value_checked_add
+        public static func valueCheckedAdd(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>, rhs_value_rptr p2: OpaqueRustPointer<Types.CSL_Value>) throws -> OpaqueRustPointer<Types.CSL_Value> {
             let c_p1 = p1.cPointer
-            var result  = try DataPtr.init(fromData: Data())
+            let c_p2 = p2.cPointer
+            var result = RPtr(_0: nil)
             var error: CharPtr? = nil
-            let success = csl_bridge_versioned_block_to_bytes(c_p1, &result, &error)
-            if success {
-                return Data(dataPtr: result)
+            let success = csl_bridge_value_checked_add(c_p1, c_p2, &result, &error)
+            if success { 
+                return OpaqueRustPointer(cPointer: result)
             } else {
                 throw createError(from: error)
             }
         }
+
+
+        // Swift Wrapper call to csl_bridge_value_checked_sub
+        public static func valueCheckedSub(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>, rhs_value_rptr p2: OpaqueRustPointer<Types.CSL_Value>) throws -> OpaqueRustPointer<Types.CSL_Value> {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            var result = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_value_checked_sub(c_p1, c_p2, &result, &error)
+            if success { 
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+
+        // Swift Wrapper call to csl_bridge_value_clamped_sub
+        public static func valueClampedSub(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>, rhs_value_rptr p2: OpaqueRustPointer<Types.CSL_Value>) throws -> OpaqueRustPointer<Types.CSL_Value> {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            var result = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_value_clamped_sub(c_p1, c_p2, &result, &error) 
+            if success { 
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+        
+        // Swift Wrapper call to csl_bridge_value_coin
+        public static func valueCoin(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>) throws -> OpaqueRustPointer<Types.CSL_BigNum> {
+            let c_p1 = p1.cPointer
+            var result = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_value_coin(c_p1, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+        // Swift Wrapper call to csl_bridge_value_multiasset
+        public static func valueMultiasset(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>) throws -> OpaqueRustPointer<Types.CSL_MultiAsset> {
+            let c_p1 = p1.cPointer
+            var result = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_value_multiasset(c_p1, &result, &error)    
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+        // Swift Wrapper call to csl_bridge_value_set_coin
+        public static func valueSetCoin(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>, coin_rptr p2: OpaqueRustPointer<Types.CSL_BigNum>) throws -> Bool {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            var result = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            return csl_bridge_value_set_coin(c_p1, c_p2, &error)
+        }
+
+        // Swift Wrapper call to csl_bridge_value_set_multiasset
+        public static func valueSetMultiasset(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>, multiasset_rptr p2: OpaqueRustPointer<Types.CSL_MultiAsset>) throws -> Bool {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            var error: CharPtr? = nil
+            return csl_bridge_value_set_multiasset(c_p1, c_p2, &error)
+        }
+
+        // Swift Wrapper call to csl_bridge_value_to_bytes
+//        public static func valueToBytes(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>) throws -> Data {
+//            let c_p1 = p1.cPointer
+//            var result  = try DataPtr.init(fromData: Data())
+//            var error: CharPtr? = nil
+//            let success = csl_bridge_value_to_bytes(c_p1, &result, &error)
+//            if success {
+//                return Data(dataPtr: result)
+//            } else {
+//                throw createError(from: error)
+//            }
+//        }
+        
+        // Swift Wrapper call to csl_bridge_value_from_bytes
+//        public static func valueFromBytes(bytes_data p1: Data) throws -> OpaqueRustPointer<Types.CSL_Value> {
+//            var c_p1_ptr = p1.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress }!
+//            let c_p1_len = UInt(p1.count)
+//            var result  = RPtr(_0: nil)
+//            var error: CharPtr? = nil
+//            let success = csl_bridge_value_from_bytes(&c_p1_ptr, c_p1_len, &result, &error)
+//            if success {
+//                return OpaqueRustPointer(cPointer: result)
+//            } else {
+//                throw createError(from: error)
+//            }
+//        }
+        
+        // Swift Wrapper call to csl_bridge_value_to_hex
+//        public static func valueToHex(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>) throws -> String {
+//            let c_p1 = p1.cPointer
+//            var result : CharPtr? = nil
+//            var error: CharPtr? = nil
+//            let success = csl_bridge_value_to_hex(c_p1, &result, &error)
+//            if success {
+//                return String(cString: result!)
+//            } else {
+//                throw createError(from: error)
+//            }
+//        }
+
+        // Swift Wrapper call to csl_bridge_value_from_hex
+//        public static func valueFromHex(hex_str_str p1: String) throws -> OpaqueRustPointer<Types.CSL_Value> {
+//            
+//            var result  = RPtr(_0: nil)
+//            var error: CharPtr? = nil
+//            let success = csl_bridge_value_from_hex(p1, &result, &error)
+//            if success {
+//                return OpaqueRustPointer(cPointer: result)
+//            } else {
+//                throw createError(from: error)
+//            }
+//        }
+        
+        // Swift Wrapper call to csl_bridge_value_to_json
+//        public static func valueToJson(self_rptr p1: OpaqueRustPointer<Types.CSL_Value>) throws -> String {
+//            let c_p1 = p1.cPointer
+//            var result : CharPtr? = nil
+//            var error: CharPtr? = nil
+//            let success = csl_bridge_versioned_block_to_bytes(c_p1, &result, &error)
+//            if success {
+//                return Data(dataPtr: result)
+//            } else {
+//                throw createError(from: error)
+//            }
+//        }
         
 
         // Swift Wrapper call to csl_bridge_versioned_block_from_bytes

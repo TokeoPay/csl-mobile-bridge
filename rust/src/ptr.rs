@@ -30,6 +30,14 @@ impl RPtr {
     val.rptr()
   }
 
+  pub fn null() -> Self {
+    RPtr(std::ptr::null_mut())
+  }
+
+  pub fn is_null(&self) -> bool {
+    self.0.is_null()
+  }
+
   pub unsafe fn typed_ref<T: RPtrRepresentable>(&self) -> Result<&mut T> {
     if self.0.is_null() {
       return Err(String::from("Pointer is NULL"));

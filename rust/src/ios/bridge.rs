@@ -24273,3 +24273,202 @@ pub unsafe extern "C" fn csl_bridge_min_script_fee(tx_rptr: RPtr, ex_unit_prices
 }
 
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{RPtr, CharPtr};
+    use std::ptr;
+  type FfiResult<T> = std::result::Result<T, String>; // Renamed to avoid clash with `Result` in RPtr
+
+  fn derive(private_key: RPtr, index: i64) -> FfiResult<RPtr> { // Returns FfiResult<RPtr, String>
+
+    let mut derived_private_key_ptr = RPtr::null();
+    let mut error_ptr: CharPtr = ptr::null();
+
+    let success = unsafe {
+      // Assuming 'index' needs to be a u32 for the C function
+      csl_bridge_bip32_private_key_derive(
+        private_key,
+        index,
+        &mut derived_private_key_ptr,
+        &mut error_ptr
+      )
+    };
+
+    // Always free the error_ptr if it was set by the C function
+    let error_message = if !error_ptr.is_null() {
+      let msg = unsafe {
+        let error_message: String = error_ptr.into_str();
+        error_message.to_string()
+      }; // Convert to owned String before freeing CString
+      unsafe {
+        let mut temp_error_ptr = error_ptr;
+        charptr_free(&mut temp_error_ptr);
+      }
+      Some(msg)
+    } else {
+      None
+    };
+
+    if success {
+      Ok(derived_private_key_ptr)
+    } else {
+      // If derivation failed, return the error message
+      // If error_message is None, provide a generic failure message
+      Err(error_message.unwrap_or_else(|| "Unknown error during key derivation.".to_string()))
+    }
+  }
+
+    #[test]
+    fn test_min_ada_for_output_invalid_ptrs() {
+
+      let entropy: Vec<u8> = vec![
+        0xdf, 0x9e, 0xd2, 0x5e, 0xd1, 0x46, 0xbf, 0x43, 0x33, 0x6a, 0x5d, 0x7c, 0xf7, 0x39, 0x59,
+        0x94,
+      ];
+      let password: Vec<u8> = vec![];
+
+      let mut master_private_key_rptr = RPtr::null();
+
+      let mut error_ptr: CharPtr = ptr::null();
+      // Safety: we're testing an unsafe FFI function
+      let success = unsafe {
+          csl_bridge_bip32_private_key_from_bip39_entropy(
+            entropy.as_ptr(),
+            entropy.len(),
+            password.as_ptr(),
+            password.len(),
+            &mut master_private_key_rptr,
+            &mut error_ptr
+          )
+      };
+
+      if success {
+        println!("Successfully generated BIP32 private key!");
+
+        let derivation_path_indices = [
+          1852 | 0x80_00_00_00, // Account purpose (hardened)
+          1815 | 0x80_00_00_00, // Coin type (hardened)
+          0    | 0x80_00_00_00, // Account index (hardened)
+          0,                    // Purpose
+          0                     // Index
+        ];
+        let mut current_private_key = master_private_key_rptr;
+
+        for (i, &index) in derivation_path_indices.iter().enumerate() {
+          match derive(current_private_key, index) {
+            Ok(derived_key) => {
+              if i > 0 && !current_private_key.is_null() { // Don't free the master key prematurely
+                unsafe {
+                  current_private_key.free()
+                }
+              }
+              current_private_key = derived_key; // Update current key to the newly derived one
+            },
+            Err(e) => {
+              eprintln!("  Failed to derive key for index {}: {}", index, e);
+              // Handle the error: perhaps free current_private_key and break the loop
+              if !current_private_key.is_null() {
+                unsafe { current_private_key.free(); }
+              }
+              return; // Exit the program or loop
+            }
+          }
+        }
+
+
+        let mut bech32: CharPtr = ptr::null();
+
+        unsafe {
+          assert!(csl_bridge_bip32_private_key_to_bech32(current_private_key, &mut bech32, &mut error_ptr));
+        }
+        let bech32_string: String = bech32.into_str();
+        println!("{:}", bech32_string);
+        assert_eq!(bech32_string, "xprv1hqf6v2lvhfn5mr3fe6g8ac6n8a3z6s0p24mg6kre8jadxulp530y07wjp2ml0zcz8gk0xc7zy96qp2xxtr0arjq9038k9dhkw3k3cswawhs4fkjp00kwc4wd6fynyaz5zw8ssggs9974apatyhs4ltg4puyevpgm");
+
+
+        unsafe {
+          if !current_private_key.is_null() {
+            unsafe { current_private_key.free(); }
+            println!("\nAll derived keys (including the final one) freed.");
+          }
+        }
+
+      } else {
+        println!("Failed to generate BIP32 private key.");
+        // If there was an error, `error_ptr` will likely contain a C string
+        // describing the error.
+        if !error_ptr.is_null() {
+          // Use your `IntoStr` trait if you prefer, or `CStr::from_ptr` directly.
+          // Using your `IntoStr` trait:
+          let error_message: String = error_ptr.into_str();
+          println!("Error: {}", error_message);
+
+          // Crucially, call your provided `charptr_free` function to free the error message!
+          unsafe {
+            let mut temp_error_ptr = error_ptr; // Create a temporary mutable copy
+            charptr_free(&mut temp_error_ptr); // Pass a mutable reference
+            // temp_error_ptr will now be null after this call
+            // error_ptr might still hold the old value, but its underlying memory is freed.
+            // It's safer to re-assign it to null if you want consistency.
+            error_ptr = ptr::null();
+          }
+        }
+      }
+    }
+
+    // #[test]
+    // fn test_min_fee_invalid_ptrs() {
+    //     let tx_rptr = RPtr::null();
+    //     let linear_fee_rptr = RPtr::null();
+    //     let mut result: RPtr = RPtr::null();
+    //     let mut error: CharPtr = CharPtr::null();
+    //
+    //     let success = unsafe {
+    //         csl_bridge_min_fee(tx_rptr, linear_fee_rptr, &mut result, &mut error)
+    //     };
+    //
+    //     assert!(!success);
+    //     assert!(!error.is_null());
+    // }
+    //
+    // #[test]
+    // fn test_min_ref_script_fee_invalid_ptrs() {
+    //     let total_ref_scripts_size_long = 0;
+    //     let ref_script_coins_per_byte_rptr = RPtr::null();
+    //     let mut result: RPtr = RPtr::null();
+    //     let mut error: CharPtr = CharPtr::null();
+    //
+    //     let success = unsafe {
+    //         csl_bridge_min_ref_script_fee(
+    //             total_ref_scripts_size_long,
+    //             ref_script_coins_per_byte_rptr,
+    //             &mut result,
+    //             &mut error,
+    //         )
+    //     };
+    //
+    //     assert!(!success);
+    //     assert!(!error.is_null());
+    // }
+    //
+    // #[test]
+    // fn test_min_script_fee_invalid_ptrs() {
+    //     let tx_rptr = RPtr::null();
+    //     let ex_unit_prices_rptr = RPtr::null();
+    //     let mut result: RPtr = RPtr::null();
+    //     let mut error: CharPtr = CharPtr::null();
+    //
+    //     let success = unsafe {
+    //         csl_bridge_min_script_fee(
+    //             tx_rptr,
+    //             ex_unit_prices_rptr,
+    //             &mut result,
+    //             &mut error,
+    //         )
+    //     };
+    //
+    //     assert!(!success);
+    //     assert!(!error.is_null());
+    // }
+}

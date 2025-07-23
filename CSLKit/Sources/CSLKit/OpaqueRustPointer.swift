@@ -17,10 +17,14 @@ public final class OpaqueRustPointer<T> {
         self.cPointer = cPointer
     }
     
+    public func debug(prefix: String) {
+        print("\(prefix): \(self.cPointer)")
+    }
+    
     /// When the Swift object is deinitialized,
     /// we call the Rust function to free the memory.
     deinit {
-        print("Deinit: Freeing Rust pointer for \(T.self)")
+        print("Deinit: Freeing Rust pointer for \(T.self)", self.cPointer)
         rptr_free(&cPointer)
     }
 }

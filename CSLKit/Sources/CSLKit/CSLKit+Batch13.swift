@@ -63,7 +63,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_transaction_builder_config_builder_new
-        public static func transactionBuilderConfigBuilderNew() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func transactionBuilderConfigBuilderNew() throws -> OpaqueRustPointer<Types.CSL_TransactionBuilderConfigBuilder> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -918,7 +918,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_transaction_output_builder_new
-        public static func transactionOutputBuilderNew() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func transactionOutputBuilderNew() throws -> OpaqueRustPointer<Types.CSL_TransactionOutputBuilder> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -983,6 +983,19 @@ extension CSLKit {
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
             let success = csl_bridge_transaction_output_builder_with_script_ref(c_p1, c_p2, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+        // Swift Wrapper call to csl_bridge_transaction_output_builder_next
+        public static func transactionOutputBuilderNext(self_rptr p1: OpaqueRustPointer<Types.CSL_TransactionOutputBuilder>) throws -> OpaqueRustPointer<Types.CSL_TransactionOutputAmountBuilder> {
+            let c_p1 = p1.cPointer
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_transaction_output_builder_next(c_p1, &result, &error)
             if success {
                 return OpaqueRustPointer(cPointer: result)
             } else {
@@ -1077,7 +1090,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_transaction_outputs_new
-        public static func transactionOutputsNew() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func transactionOutputsNew() throws -> OpaqueRustPointer<Types.CSL_TransactionOutput> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil

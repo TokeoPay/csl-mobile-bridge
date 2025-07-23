@@ -1388,7 +1388,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_enterprise_address_new
-        public static func enterpriseAddressNew(network_long p1: Int64, payment_rptr p2: OpaqueRustPointer<Types.CSL_Credential>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func enterpriseAddressNew(network_long p1: Int64, payment_rptr p2: OpaqueRustPointer<Types.CSL_Credential>) throws -> OpaqueRustPointer<Types.CSL_EnterpriseAddress> {
             let c_p2 = p2.cPointer
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil

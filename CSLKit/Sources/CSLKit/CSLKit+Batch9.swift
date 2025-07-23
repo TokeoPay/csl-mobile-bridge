@@ -1241,6 +1241,23 @@ extension CSLKit {
         }
         
 
+        // Swift Wrapper call to csl_bridge_private_key_sign
+        public static func privateKeySign(self_rptr p1: OpaqueRustPointer<Types.CSL_PrivateKey>, msg_data p2: Data) throws -> OpaqueRustPointer<Types.CSL_Signature> {
+            let c_p1 = p1.cPointer
+            
+            var c_p2_ptr = p2.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress }!
+            let c_p2_len = UInt(p2.count)
+
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_private_key_sign(c_p1, &c_p2_ptr, c_p2_len, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+        
         // Swift Wrapper call to csl_bridge_private_key_to_public
         public static func privateKeyToPublic(self_rptr p1: OpaqueRustPointer<Types.CSL_PrivateKey>) throws -> OpaqueRustPointer<Types.CSL_PublicKey> {
             let c_p1 = p1.cPointer

@@ -46,7 +46,10 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_stake_delegation_new
-        public static func stakeDelegationNew(stake_credential_rptr p1: OpaqueRustPointer<Types.CSL_Credential>, pool_keyhash_rptr p2: OpaqueRustPointer<Types.CSL_Ed25519KeyHash>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func stakeDelegationNew(
+            stake_credential_rptr p1: OpaqueRustPointer<Types.CSL_Credential>, 
+            pool_keyhash_rptr p2: OpaqueRustPointer<Types.CSL_Ed25519KeyHash>) throws -> OpaqueRustPointer<Types.CSL_StakeDelegation> {
+                
             let c_p1 = p1.cPointer
             let c_p2 = p2.cPointer
             var result  = RPtr(_0: nil)
@@ -1418,7 +1421,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_transaction_builder_new
-        public static func transactionBuilderNew(cfg_rptr p1: OpaqueRustPointer<Types.CSL_TransactionBuilderConfig>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func transactionBuilderNew(cfg_rptr p1: OpaqueRustPointer<Types.CSL_TransactionBuilderConfig>) throws -> OpaqueRustPointer<Types.CSL_TransactionBuilder> {
             let c_p1 = p1.cPointer
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil

@@ -32,7 +32,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_linear_fee_new
-        public static func linearFeeNew(coefficient_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, constant_rptr p2: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func linearFeeNew(coefficient_rptr p1: OpaqueRustPointer<Types.CSL_BigNum>, constant_rptr p2: OpaqueRustPointer<Types.CSL_BigNum>) throws -> OpaqueRustPointer<Types.CSL_LinearFee> {
             let c_p1 = p1.cPointer
             let c_p2 = p2.cPointer
             var result  = RPtr(_0: nil)
@@ -1010,7 +1010,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_multi_asset_new
-        public static func multiAssetNew() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func multiAssetNew() throws -> OpaqueRustPointer<Types.CSL_MultiAsset> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -1021,6 +1021,38 @@ extension CSLKit {
                 throw createError(from: error)
             }
         }
+
+        // Swift Wrapper call to csl_bridge_multi_asset_insert
+    public static func multiAssetInsert(self_rptr p1: OpaqueRustPointer<Types.CSL_MultiAsset>, policy p2: OpaqueRustPointer<Types.CSL_ScriptHash>, asset_rptr p3: OpaqueRustPointer<Types.CSL_Assets>) throws -> OpaqueRustPointer<Types.CSL_None> {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            let c_p3 = p3.cPointer
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_multi_asset_insert(c_p1, c_p2, c_p3, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+
+        // Swift Wrapper call to csl_bridge_multi_asset_get
+        public static func multiAssetGet(self_rptr p1: OpaqueRustPointer<Types.CSL_MultiAsset>, policy p2: OpaqueRustPointer<Types.CSL_ScriptHash>) throws -> OpaqueRustPointer<Types.CSL_Assets> {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2.cPointer
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_multi_asset_get(c_p1, c_p2, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+
         
 
         // Swift Wrapper call to csl_bridge_multi_asset_len
