@@ -4,38 +4,39 @@
 import PackageDescription
 import CompilerPluginSupport
 
+let useLocalBinary = true
+let version = "0.1.0"
+let haskellShelleyBinaryVersionURL = "https://github.com/TokeoPay/csl-mobile-bridge/releases/download/0.0.1/react_native_haskell_shelley.artifactbundle.zip"
+let haskellShelleyBinaryChecksum = "abf4ef900e8b67b39839c38516ea9162912cd0b704b771e3551bfea8e2b73807"
+
+
 let package = Package(
     name: "CSLKit",
     platforms: [.macOS(.v10_15), .iOS(.v13)],
     products: [
         .library(name: "CSLKit", targets: ["CSLKit"]),
     ],
-//    dependencies: [
-//        .package(
-//            url: "https://github.com/apple/swift-syntax.git",
-//            from: "509.0.0"
-//        ),
-//    ],
     targets: [
         // Your existing binary and Objective-C targets
-        .binaryTarget(
-            name: "react_native_haskell_shelley",
-            url: "https://github.com/TokeoPay/csl-mobile-bridge/raw/refs/heads/main/CSLKit/build/react_native_haskell_shelley.artifactbundle.zip",
-            checksum: "7ffd85d845870ab185ec5b6ee4bb799ea5574c49742f6fed671d67a08ff811f4"
+        useLocalBinary ?
+            .binaryTarget(name: "react_native_haskell_shelley_binary", path: "./build/react_native_haskell_shelley.artifactbundle")
+        : .binaryTarget(
+            name: "react_native_haskell_shelley_binary",
+            url: haskellShelleyBinaryVersionURL,
+            checksum: haskellShelleyBinaryChecksum
         ),
         .target(
             name: "CSLKitObjC",
-            dependencies: ["react_native_haskell_shelley"],
-            publicHeadersPath: "."
+            dependencies: ["react_native_haskell_shelley_binary"],
+            publicHeadersPath: ".",
         ),
-        
         // The main library target
         .target(
             name: "CSLKit",
             dependencies: [
                 "CSLKitObjC",
 //                "CSLKitMacrosPlugin",
-                "react_native_haskell_shelley",
+                // "react_native_haskell_shelley",
             ]
         ),
                 

@@ -167,7 +167,7 @@ extension CSLKit {
     }
 
     // Swift Wrapper call to csl_bridge_bip32_private_key_to_raw_key
-    public static func bip32PrivateKeyToRawKey(self_rptr p1: OpaqueRustPointer<Types.CSL_Bip32PrivateKey>) throws -> OpaqueRustPointer<Types.CSL_RawKey> {
+    public static func bip32PrivateKeyToRawKey(self_rptr p1: OpaqueRustPointer<Types.CSL_Bip32PrivateKey>) throws -> OpaqueRustPointer<Types.CSL_PrivateKey> {
         let c_p1 = p1.cPointer
         var result  = RPtr(_0: nil)
         var error: CharPtr? = nil

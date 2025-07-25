@@ -9,7 +9,7 @@ output_dir = Path(__file__).parent / 'tmp_files'
 output_dir.mkdir(exist_ok=True)
 
 # Imports to include in each Swift file
-imports = '''import Foundation\nimport react_native_haskell_shelley\nimport CSLKitObjC\n'''
+imports = '''import Foundation\nimport react_native_haskell_shelley\n\n'''
 
 # Read the input file
 with open(input_file, 'r', encoding='utf-8') as f:

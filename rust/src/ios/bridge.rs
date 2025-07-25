@@ -236,7 +236,71 @@ use cardano_serialization_lib::VotingProposals;
 use cardano_serialization_lib::Withdrawals;
 use cardano_serialization_lib::WithdrawalsBuilder;
 use cardano_serialization_lib::legacy_address::ByronAddressType;
+use cardano_message_signing as ms;
+use cardano_message_signing::builders::{AlgorithmId, COSESign1Builder, CurveType, KeyType};
+use cardano_message_signing::cbor::{CBORArray, CBORValue};
+use cardano_message_signing::{COSEKey, COSESign1, Label};
+use cardano_message_signing::utils::ToBytes;
 
+fn hex_encode(bytes: Vec<u8>) -> String {
+  bytes.iter().map(|b| format!("{:02x}", b)).collect()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn mk_cose1_sign_data(private_key: RPtr, address_ptr: RPtr, data_data: *const u8, data_len: usize, result: &mut CharPtr, error: &mut CharPtr) -> bool {
+    handle_exception_result(|| {
+      let pk = private_key.typed_ref::<PrivateKey>()?;
+      let address = address_ptr.typed_ref::<Address>()?;
+      let address_bytes = address.to_bytes();
+
+      let payload= from_raw_parts(data_data, data_len).to_vec();
+      let mut protected_headers = ms::HeaderMap::new();
+
+      protected_headers.set_algorithm_id(&Label::from_algorithm_id(AlgorithmId::EdDSA));
+      protected_headers.set_header(
+        &Label::new_text("address".to_string()),
+        &CBORValue::new_bytes(address_bytes.clone())
+      ).expect("Unable to set Address Protected header ");
+
+      let protected_serialized = ms::ProtectedHeaderMap::new(&protected_headers);
+      let unprotected = ms::HeaderMap::new();
+      let headers = ms::Headers::new(&protected_serialized, &unprotected);
+      let builder = ms::builders::COSESign1Builder::new(&headers, payload, false);
+
+      let mut cose_key = COSEKey::new(&Label::from_key_type(KeyType::OKP));
+      cose_key.set_key_id(address_bytes);
+      cose_key.set_algorithm_id(&Label::from_algorithm_id(AlgorithmId::EdDSA));
+
+      cose_key.set_header(
+        &Label::new_int(&ms::utils::Int::new_i32(-1)),
+        &CBORValue::new_int(&ms::utils::Int::new_i32(6))
+      ).expect("Unable to set CoseKey CurveType");
+
+      cose_key.set_header(
+        &Label::new_int(&ms::utils::Int::new_i32(-2)),
+        &CBORValue::new_bytes(pk.to_public().as_bytes())
+      ).expect("Unable to set CoseKey X_KEY");
+
+      let to_sign = builder.make_data_to_sign().to_bytes();
+
+      let signed_sig_struct = pk.sign(&to_sign).to_bytes();
+
+      let sig = builder.build(signed_sig_struct);
+
+      let signature_hex = hex_encode(CBORValue::new_bytes(sig.to_bytes()).to_bytes());
+      let key_hex = hex_encode(CBORValue::new_bytes(cose_key.to_bytes()).to_bytes());
+
+      // Manually construct the JSON string
+      let json = format!(
+        r#"{{"signature": "{}", "key": "{}"}}"#,
+        signature_hex, key_hex
+      );
+
+      Ok::<CharPtr, String>(json.into_cstr())
+    })
+        .response(result,  error)
+
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn csl_bridge_address_from_bytes(data_data: *const u8, data_len: usize, result: &mut RPtr, error: &mut CharPtr) -> bool {

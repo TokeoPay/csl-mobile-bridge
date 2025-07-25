@@ -1370,6 +1370,22 @@ extension CSLKit {
                 throw createError(from: error)
             }
         }
+    
+    
+    public static func privateKeyCose1SignData(self_rptr p1: OpaqueRustPointer<Types.CSL_PrivateKey>, addr_ptr: OpaqueRustPointer<Types.CSL_Address>, bytes_data p2: Data) throws -> String {
+        let c_p1 = p1.cPointer
+        var c_p2_ptr = p2.withUnsafeBytes { $0.bindMemory(to: UInt8.self).baseAddress }!
+        let c_p2_len = UInt(p2.count)
+        var result: CharPtr? = nil
+        var error: CharPtr? = nil
+            
+        let success = mk_cose1_sign_data(c_p1, addr_ptr.cPointer, c_p2_ptr, c_p2_len, &result, &error)
+            if success {
+                return String(cString: result!)
+            } else {
+                throw createError(from: error)
+            }
+        }
         
 
         // Swift Wrapper call to csl_bridge_private_key_to_hex

@@ -61,7 +61,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_address_payment_cred
-        public static func addressPaymentCred(self_rptr p1: OpaqueRustPointer<Types.CSL_Address>) throws -> OpaqueRustPointer<Types.CSL_PaymentCred> {
+        public static func addressPaymentCred(self_rptr p1: OpaqueRustPointer<Types.CSL_Address>) throws -> OpaqueRustPointer<Types.CSL_Credential> {
             let c_p1 = p1.cPointer
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil

@@ -1,8 +1,16 @@
 // swift-tools-version: 6.1
 // The swift-tools-version declares the minimum version of Swift required to build this package.
+// This is the Main Package.swift file for the CSLKit library. We need it here as Swift Package Manager is
+// not able to locate Swift Packages in a sub directory within the Repo.
 
 import PackageDescription
 import CompilerPluginSupport
+
+let version = "0.0.1"
+
+let haskellShelleyBinaryVersionURL = "https://github.com/TokeoPay/csl-mobile-bridge/releases/download/0.0.1/react_native_haskell_shelley.artifactbundle.zip"
+let haskellShelleyBinaryChecksum = "abf4ef900e8b67b39839c38516ea9162912cd0b704b771e3551bfea8e2b73807"
+let useLocalBinary = false
 
 let package = Package(
     name: "csl-mobile-bridge",
@@ -11,22 +19,23 @@ let package = Package(
         .library(name: "CSLKit", targets: ["CSLKit"]),
     ],
     targets: [
-        .binaryTarget(
-            name: "react_native_haskell_shelley",
-            url: "https://github.com/TokeoPay/csl-mobile-bridge/raw/refs/heads/main/CSLKit/build/react_native_haskell_shelley.artifactbundle.zip",
-            checksum: "7ffd85d845870ab185ec5b6ee4bb799ea5574c49742f6fed671d67a08ff811f4"
+        useLocalBinary ?
+            .binaryTarget(name: "react_native_haskell_shelley_binary", path: "./CSLKit/build/react_native_haskell_shelley.artifactbundle")
+        : .binaryTarget(
+            name: "react_native_haskell_shelley_binary",
+            url: haskellShelleyBinaryVersionURL,
+            checksum: haskellShelleyBinaryChecksum
         ),
         .target(
             name: "CSLKitObjC",
-            dependencies: ["react_native_haskell_shelley"],
+            dependencies: ["react_native_haskell_shelley_binary"],
             path: "CSLKit/Sources/CSLKitObjC",
-            publicHeadersPath: "."
+            publicHeadersPath: ".",
         ),
         .target(
             name: "CSLKit",
             dependencies: [
                 "CSLKitObjC",
-                "react_native_haskell_shelley",
             ],
             path: "CSLKit/Sources/CSLKit"
         ),

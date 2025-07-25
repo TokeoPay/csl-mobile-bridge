@@ -1143,6 +1143,7 @@ extension CSLKit {
                 throw createError(from: error)
             }
         }
+    
         
 
         // Swift Wrapper call to csl_bridge_ed25519_key_hash_from_hex

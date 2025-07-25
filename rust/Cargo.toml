@@ -12,6 +12,7 @@ cryptoxide = { git = "https://github.com/emurgo/cryptoxide", tag="0.4.4"}
 
 [dependencies]
 cardano-serialization-lib = "=14.1.2"
+cardano-message-signing = "1.0.1"
 byteorder = "1.4.3"
 base64 = "0.20.0"
 # tag = "2.3.1"
