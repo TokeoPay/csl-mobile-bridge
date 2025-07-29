@@ -1246,7 +1246,7 @@ extension CSLKit {
         
 
         // Swift Wrapper call to csl_bridge_transaction_unspent_outputs_new
-        public static func transactionUnspentOutputsNew() throws -> OpaqueRustPointer<Types.CSL_None> {
+        public static func transactionUnspentOutputsNew() throws -> OpaqueRustPointer<Types.CSL_TransactionUnspentOutputs> {
             
             var result  = RPtr(_0: nil)
             var error: CharPtr? = nil
@@ -1257,7 +1257,22 @@ extension CSLKit {
                 throw createError(from: error)
             }
         }
-        
+    
+    
+        // Swift Wrapper call to csl_bridge_transaction_unspent_outputs_add
+        public static func transactionUnspentOutputsAdd(self_rptr p1: OpaqueRustPointer<Types.CSL_TransactionUnspentOutputs>, utxo_rptr p2: OpaqueRustPointer<Types.CSL_TransactionUnspentOutput>) throws {
+            
+            let self_ptr = p1.cPointer
+            let utxo_ptr = p2.cPointer
+            
+            var error: CharPtr? = nil
+            let success = csl_bridge_transaction_unspent_outputs_add(self_ptr, utxo_ptr, &error)
+            if success {
+                return
+            } else {
+                throw createError(from: error)
+            }
+        }
 
         // Swift Wrapper call to csl_bridge_transaction_unspent_outputs_len
         public static func transactionUnspentOutputsLen(self_rptr p1: OpaqueRustPointer<Types.CSL_TransactionUnspentOutputs>) throws -> Int64 {

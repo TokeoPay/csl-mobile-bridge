@@ -1,17 +1,33 @@
 #!/bin/bash
 
-local current_dir=$(pwd)
-local ZIP_FILE="react_native_haskell_shelley.artifactbundle.zip"
-CURRENT_VERSION=$(git tag --sort='-v:refname' --list '[0-9]*.[0-9]*.[0-9]*' | head -n 1)
+current_dir=$(pwd)
+ZIP_FILE="react_native_haskell_shelley.artifactbundle.zip"
+CURRENT_VERSION=$(git tag --sort=-committerdate | head -1)
 
-if [ -z "$CURRENT_VERSION" ]; then
-  CURRENT_VERSION="0.1.0"
-fi
+# Function to bump alpha version if present, otherwise bump minor version
+bump_version() {
+  local version="$1"
+  # Remove leading 'v' if present
+  version="${version#v}"
 
-# Bump the "middle" digit (minor version) by 1 for each release
-IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
-NEW_MINOR=$((MINOR + 1))
-NEW_VERSION="${MAJOR}.${NEW_MINOR}.0"
+  if [[ "$version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)-alpha\.([0-9]+)$ ]]; then
+    MAJOR="${BASH_REMATCH[1]}"
+    MINOR="${BASH_REMATCH[2]}"
+    PATCH="${BASH_REMATCH[3]}"
+    ALPHA="${BASH_REMATCH[4]}"
+    NEW_ALPHA=$((ALPHA + 1))
+    NEW_VERSION="v${MAJOR}.${MINOR}.${PATCH}-alpha.${NEW_ALPHA}"
+  else
+    # fallback to bumping minor version and resetting patch
+    IFS='.' read -r MAJOR MINOR PATCH <<< "$version"
+    NEW_MINOR=$((MINOR + 1))
+    NEW_VERSION="v${MAJOR}.${NEW_MINOR}.0"
+  fi
+  echo "$NEW_VERSION"
+}
+
+NEW_VERSION=$(bump_version "$CURRENT_VERSION")
+echo "New version: $NEW_VERSION"
 
 # First build the Rust Library - we will use the create_atrifact.sh file to create the artifact bundle
 cd CSLKit
@@ -20,19 +36,30 @@ cd CSLKit
 cd build
 
 zip -r react_native_haskell_shelley.artifactbundle.zip react_native_haskell_shelley.artifactbundle
-CHECKSUM=$(swift package compute-checksum )
+CHECKSUM=$(swift package compute-checksum react_native_haskell_shelley.artifactbundle.zip)
 
 echo "Checksum: $CHECKSUM"
 
-cd ..
+cd $current_dir
 
 ESCAPED_URL=$(echo "https://github.com/TokeoPay/csl-mobile-bridge/releases/download/${NEW_VERSION}/${ZIP_FILE}" | sed 's/\//\\\//g')
 
 # Update Package.swift with the new checksum and calculated URL
 sed -i '' 's/let haskellShelleyBinaryChecksum = ".*"/let haskellShelleyBinaryChecksum = "'$CHECKSUM'"/' Package.swift
 sed -i '' 's|let haskellShelleyBinaryVersionURL = ".*"|let haskellShelleyBinaryVersionURL = "'$ESCAPED_URL'"|' Package.swift
+sed -i '' 's/let haskellShelleyBinaryChecksum = ".*"/let haskellShelleyBinaryChecksum = "'$CHECKSUM'"/' CSLKit/Package.swift
+sed -i '' 's|let haskellShelleyBinaryVersionURL = ".*"|let haskellShelleyBinaryVersionURL = "'$ESCAPED_URL'"|' CSLKit/Package.swift
 
+git add -u
+git commit -m "Bump version to $NEW_VERSION"
+git tag $NEW_VERSION
+git push origin $NEW_VERSION
 
-cd $current_dir
+gh release create "$NEW_VERSION" \
+    "$ZIP_FILE" \
+    --title "Release v$NEW_VERSION" \
+    --notes "Pre-built binary for $NEW_VERSION." \
+    --latest
 
+gh release upload "$NEW_VERSION" "./CSLKit/build/$ZIP_FILE"
 

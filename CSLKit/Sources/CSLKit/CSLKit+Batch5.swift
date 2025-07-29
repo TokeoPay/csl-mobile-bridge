@@ -606,7 +606,22 @@ extension CSLKit {
                 throw createError(from: error)
             }
         }
-        
+    
+        // Swift Wrapper call to csl_bridge_fixed_transaction_fee
+        public static func fixedTransactionFee(self_rptr p1: OpaqueRustPointer<Types.CSL_FixedTransaction>) throws -> OpaqueRustPointer<Types.CSL_BigNum> {
+            let c_p1 = p1.cPointer
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_fixed_transaction_fee(c_p1, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+    
+    
+    
 
         // Swift Wrapper call to csl_bridge_fixed_transaction_body_tx_hash
         public static func fixedTransactionBodyTxHash(self_rptr p1: OpaqueRustPointer<Types.CSL_FixedTransactionBody>) throws -> OpaqueRustPointer<Types.CSL_TransactionHash> {

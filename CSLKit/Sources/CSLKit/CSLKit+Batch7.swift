@@ -17,6 +17,21 @@ extension CSLKit {
         }
         
 
+        // Swift Wrapper call to csl_bridge_big_int_pow
+        public static func bigIntPow(self_rptr p1: OpaqueRustPointer<Types.CSL_BigInt>, exponent_rptr p2: Int64) throws -> OpaqueRustPointer<Types.CSL_BigInt> {
+            let c_p1 = p1.cPointer
+            let c_p2 = p2
+            var result  = RPtr(_0: nil)
+            var error: CharPtr? = nil
+            let success = csl_bridge_big_int_pow(c_p1, c_p2, &result, &error)
+            if success {
+                return OpaqueRustPointer(cPointer: result)
+            } else {
+                throw createError(from: error)
+            }
+        }
+
+
         // Swift Wrapper call to csl_bridge_legacy_daedalus_private_key_chaincode
         public static func legacyDaedalusPrivateKeyChaincode(self_rptr p1: OpaqueRustPointer<Types.CSL_LegacyDaedalusPrivateKey>) throws -> Data {
             let c_p1 = p1.cPointer

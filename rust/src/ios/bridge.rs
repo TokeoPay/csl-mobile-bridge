@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+use std::collections::HashSet;
 use std::slice::from_raw_parts;
 use super::bridge_tools::result::*;
 use super::bridge_tools::string::*;
@@ -287,8 +289,8 @@ pub unsafe extern "C" fn mk_cose1_sign_data(private_key: RPtr, address_ptr: RPtr
 
       let sig = builder.build(signed_sig_struct);
 
-      let signature_hex = hex_encode(CBORValue::new_bytes(sig.to_bytes()).to_bytes());
-      let key_hex = hex_encode(CBORValue::new_bytes(cose_key.to_bytes()).to_bytes());
+      let signature_hex = hex_encode(sig.to_bytes());
+      let key_hex = hex_encode(cose_key.to_bytes());
 
       // Manually construct the JSON string
       let json = format!(
@@ -6225,6 +6227,15 @@ pub unsafe extern "C" fn csl_bridge_fixed_transaction_to_bytes(self_rptr: RPtr, 
   .response(result,  error)
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn csl_bridge_fixed_transaction_fee(self_rptr: RPtr, result: &mut RPtr, error: &mut CharPtr) -> bool {
+  handle_exception_result(|| { 
+    let self_ref = self_rptr.typed_ref::<FixedTransaction>()?;
+    let result = self_ref.body().fee();
+    Ok::<RPtr, String>(result.rptr())
+  })
+  .response(result,  error)
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn csl_bridge_fixed_transaction_from_bytes(bytes_data: *const u8, bytes_len: usize, result: &mut RPtr, error: &mut CharPtr) -> bool {
@@ -6649,6 +6660,126 @@ pub unsafe extern "C" fn csl_bridge_fixed_tx_witnesses_set_add_bootstrap_witness
     Ok(())
   })
   .response(&mut (),  error)
+}
+
+
+#[no_mangle]
+pub unsafe extern "C" fn csl_bridge_fixed_transaction_get_all_signers(self_rptr: RPtr, inputs_rptr: RPtr, result: &mut DataPtrArray, error: &mut CharPtr) -> bool {
+  handle_exception_result(|| { 
+    let self_ref = self_rptr.typed_ref::<FixedTransaction>()?;
+    let inputs = inputs_rptr.typed_ref::<TransactionUnspentOutputs>()?; // All UTxOs that are using in this transaction
+
+    let body = self_ref.body();
+
+    let utxo_map: HashMap<_, _> = inputs.into_iter()
+      .map(|utxo| (utxo.input(), utxo))
+      .collect();
+
+    let all_key_hash_signers = {
+      // Regular inputs
+      let regular_signers = body.inputs()
+          .into_iter()
+          .filter_map(|input| {
+              utxo_map.get(&input)
+                  .and_then(|utxo| utxo.output().address().payment_cred())
+                  .and_then(|cred| cred.to_keyhash())
+                  .map(|key_hash| key_hash.to_bytes())
+          })
+          .collect::<Vec<_>>();
+      
+      // Collateral inputs (optional)
+      let collateral_signers = body.collateral()
+          .map(|collateral_inputs| {
+              collateral_inputs
+                  .into_iter()
+                  .filter_map(|input| {
+                      utxo_map.get(&input)
+                          .and_then(|utxo| utxo.output().address().payment_cred())
+                          .and_then(|cred| cred.to_keyhash())
+                          .map(|key_hash| key_hash.to_bytes())
+                  })
+                  .collect::<Vec<_>>()
+          })
+          .unwrap_or_default();
+      
+      let required_signers = body.required_signers()
+          .map(|required_signers| {
+            required_signers.into_iter()
+              .filter_map(|required_signer| {
+                Some(required_signer.to_bytes())
+              })
+              .collect::<Vec<_>>()
+          })
+          .unwrap_or_default();
+
+      //TODO: Need to parse through the extra signers (i.e., from Certificates etc)
+      [regular_signers, collateral_signers, required_signers]
+        .concat()
+        .into_iter()
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>()
+    };
+
+    let result: DataPtrArray = all_key_hash_signers.into();
+    Ok::<DataPtrArray, String>(result)
+  })
+  .response(result,  error)
+}
+
+
+
+
+
+#[no_mangle]
+pub unsafe extern "C" fn csl_bridge_cip30_vkey_witness(self_rptr: RPtr, other_rptr: RPtr, result: &mut RPtr, error: &mut CharPtr) -> bool {
+  handle_exception_result(|| { 
+    let self_ref = self_rptr.typed_ref::<FixedTransaction>()?;
+    let other_ref = other_rptr.typed_ref::<FixedTransaction>()?;
+
+    // Get VKeyWitnesses from both transactions
+    let self_vkeys = self_ref.witness_set().vkeys();
+    let other_vkeys = other_ref.witness_set().vkeys();
+
+    // Create a new VKeyWitnesses to hold the difference
+    let mut result_vkeys = Vkeywitnesses::new();
+    
+    // If other_vkeys is None, return all self_vkeys (difference is everything in self)
+    if other_vkeys.is_none() {
+      if let Some(self_vkeys_unwrapped) = self_vkeys {
+        for i in 0..self_vkeys_unwrapped.len() {
+          let self_vkey = self_vkeys_unwrapped.get(i);
+          result_vkeys.add(&self_vkey);
+        }
+      }
+    } else {
+      // Both have VKeyWitnesses, find the difference
+      if let (Some(self_vkeys_unwrapped), Some(other_vkeys_unwrapped)) = (self_vkeys, other_vkeys) {
+        // Find VKeys in self that are NOT in other (difference)
+        for i in 0..self_vkeys_unwrapped.len() {
+          let self_vkey = self_vkeys_unwrapped.get(i);
+          let mut found_in_other = false;
+          
+          // Check if this VKey exists in other
+          for j in 0..other_vkeys_unwrapped.len() {
+            let other_vkey = other_vkeys_unwrapped.get(j);
+            if self_vkey.eq(&other_vkey) {
+              found_in_other = true;
+              break;
+            }
+          }
+          
+          // If not found in other, add to result (this is the difference)
+          if !found_in_other {
+            result_vkeys.add(&self_vkey);
+          }
+        }
+      }
+    }
+
+    Ok::<RPtr, String>(result_vkeys.rptr())
+  })
+  .response(result,  error)
 }
 
 

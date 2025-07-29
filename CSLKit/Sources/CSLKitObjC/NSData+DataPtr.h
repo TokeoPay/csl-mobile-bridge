@@ -16,7 +16,9 @@ NS_ASSUME_NONNULL_BEGIN
 + (NSData *)fromBase64:(NSString *)base64Encoded;
 
 - (NSString *)base64;
++ (NSData *)fromBase64:(NSString *)base64Encoded;
 
++ (NSArray<NSData *> *)fromDataPtrArray:(DataPtrArray *)array;
 @end
 
 NS_ASSUME_NONNULL_END

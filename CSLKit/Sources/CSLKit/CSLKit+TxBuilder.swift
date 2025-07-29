@@ -1334,4 +1334,48 @@ extension CSLKit {
     }
     
 
+    // Swift Wrapper call to csl_bridge_fixed_transaction_sign_and_add_vkey_signature
+    public static func fixedTransactionSignAndAddVkeySignature(self_rptr p1: OpaqueRustPointer<Types.CSL_FixedTransaction>, key_rptr p2: OpaqueRustPointer<Types.CSL_PrivateKey>) throws {
+        let c_p1 = p1.cPointer
+        let c_p2 = p2.cPointer
+        var error: CharPtr? = nil
+        let success = csl_bridge_fixed_transaction_sign_and_add_vkey_signature(c_p1, c_p2, &error)
+        if success {
+            return
+        } else {
+            throw createError(from: error)
+        }
+    }
+
+    // Swift Wrapper call to csl_bridge_cip30_vkey_witness
+    public static func cip30VkeyWitness(self_rptr p1: OpaqueRustPointer<Types.CSL_FixedTransaction>, other_rptr p2: OpaqueRustPointer<Types.CSL_FixedTransaction>) throws -> OpaqueRustPointer<Types.CSL_Vkeywitnesses> {
+        let c_p1 = p1.cPointer
+        let c_p2 = p2.cPointer
+        var result  = RPtr(_0: nil)
+        var error: CharPtr? = nil
+        let success = csl_bridge_cip30_vkey_witness(c_p1, c_p2, &result, &error)
+        if success {
+            return OpaqueRustPointer(cPointer: result)
+        } else {
+            throw createError(from: error)
+        }
+    }
+
+
+    // Swift wrapper call to csl_bridge_fixed_transaction_get_all_signers
+    public static func fixedTransactionGetAllSigners(self_rptr p1: OpaqueRustPointer<Types.CSL_FixedTransaction>, inputs_rptr p2: OpaqueRustPointer<Types.CSL_TransactionUnspentOutputs>) throws -> [Data] {
+        let c_p1 = p1.cPointer
+        let c_p2 = p2.cPointer
+        var result  = DataPtrArray()
+        var error: CharPtr? = nil
+        let success = csl_bridge_fixed_transaction_get_all_signers(c_p1, c_p2, &result, &error)
+        if success {
+            return NSData.fromDataPtrArray(&result)
+        } else {
+            throw createError(from: error)
+        }
+    }
+
+
+
 }
