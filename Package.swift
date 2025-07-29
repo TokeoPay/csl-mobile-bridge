@@ -8,8 +8,8 @@ import CompilerPluginSupport
 
 let version = "0.0.1"
 
-let haskellShelleyBinaryVersionURL = "https://github.com/TokeoPay/csl-mobile-bridge/releases/download/v0.0.1-alpha.3/react_native_haskell_shelley.artifactbundle.zip"
-let haskellShelleyBinaryChecksum = "d4c4c6cf92decbe62bbbebec7a1275807878cf074ffd77346da3c66c2606bd83"
+let haskellShelleyBinaryVersionURL = "https://github.com/TokeoPay/csl-mobile-bridge/releases/download/v0.0.1-alpha.4/react_native_haskell_shelley.artifactbundle.zip"
+let haskellShelleyBinaryChecksum = "376b0f3f18ff0391ed50e9873add97c559c457d3c2d2b0f1d2430c84a7fca306"
 let useLocalBinary = true
 
 let package = Package(

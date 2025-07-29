@@ -29,14 +29,28 @@ bump_version() {
 NEW_VERSION=$(bump_version "$CURRENT_VERSION")
 echo "New version: $NEW_VERSION"
 
-# First build the Rust Library - we will use the create_atrifact.sh file to create the artifact bundle
+# First build the Rust Library - we will use the create_artifact.sh file to create the artifact bundle
 cd CSLKit
 ./create_artifact.sh
 
 cd build
 
-zip -r react_native_haskell_shelley.artifactbundle.zip react_native_haskell_shelley.artifactbundle
-CHECKSUM=$(swift package compute-checksum react_native_haskell_shelley.artifactbundle.zip)
+# Check if the artifact bundle directory exists
+if [ ! -d "react_native_haskell_shelley.artifactbundle" ]; then
+    echo "Error: react_native_haskell_shelley.artifactbundle directory not found!"
+    exit 1
+fi
+
+# Create the zip file
+zip -r "$ZIP_FILE" react_native_haskell_shelley.artifactbundle
+
+# Check if the zip file was created successfully
+if [ ! -f "$ZIP_FILE" ]; then
+    echo "Error: Failed to create zip file $ZIP_FILE"
+    exit 1
+fi
+
+CHECKSUM=$(swift package compute-checksum "$ZIP_FILE")
 
 echo "Checksum: $CHECKSUM"
 
@@ -55,11 +69,16 @@ git commit -m "Bump version to $NEW_VERSION"
 git tag $NEW_VERSION
 git push origin $NEW_VERSION
 
+# Copy the zip file to the current directory for gh release create
+cp "CSLKit/build/$ZIP_FILE" .
+
+# Create the release with the zip file
 gh release create "$NEW_VERSION" \
     "$ZIP_FILE" \
-    --title "Release v$NEW_VERSION" \
+    --title "Release $NEW_VERSION" \
     --notes "Pre-built binary for $NEW_VERSION." \
     --latest
 
-gh release upload "$NEW_VERSION" "./CSLKit/build/$ZIP_FILE"
+# Clean up the copied file
+rm "$ZIP_FILE"
 
